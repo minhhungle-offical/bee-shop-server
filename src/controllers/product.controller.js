@@ -1,6 +1,7 @@
 import cloudinary, { uploadToCloudinary } from '../configs/cloudinary.js'
 import { Product } from '../models/Product.js'
 import { sendError } from '../utils/sendError.js'
+import { generateUniqueSlug } from '../utils/slug.js'
 
 // GET /api/products
 export const getAllProducts = async (req, res) => {
@@ -10,7 +11,7 @@ export const getAllProducts = async (req, res) => {
     limit = parseInt(limit)
 
     const filter = {}
-    if (search) filter.title = { $regex: search, $options: 'i' }
+    if (search) filter.name = { $regex: search, $options: 'i' }
 
     const total = await Product.countDocuments(filter)
     const products = await Product.find(filter)
@@ -55,7 +56,7 @@ export const getProductById = async (req, res) => {
 // POST /api/products
 export const createProduct = async (req, res) => {
   try {
-    const { title, price, content, category, code } = req.body
+    const { name, price, content, category, code } = req.body
 
     let images = []
     if (req.files && req.files.length > 0) {
@@ -65,13 +66,16 @@ export const createProduct = async (req, res) => {
       }
     }
 
+    const slug = await generateUniqueSlug(name, Product)
+
     const product = new Product({
-      title,
+      name,
       price,
       content,
       images,
       category,
       code,
+      slug,
     })
     await product.save()
 
@@ -88,30 +92,42 @@ export const createProduct = async (req, res) => {
 // PUT /api/products/:id
 export const updateProduct = async (req, res) => {
   try {
-    const { title, price, content, category, code, removeImages } = req.body
+    const { name, price, content, category, code, removeImages } = req.body
+    const { id } = req.params
 
-    const product = await Product.findById(req.params.id)
+    const product = await Product.findById(id)
     if (!product) return sendError(res, 404, 'Product not found')
 
-    if (removeImages && Array.isArray(removeImages)) {
-      for (const publicId of removeImages) {
+    if (name && name !== product.name) {
+      product.slug = await generateUniqueSlug(name, Product, id)
+      product.name = name
+    }
+
+    let removeList = []
+    if (removeImages) {
+      removeList = Array.isArray(removeImages) ? removeImages : JSON.parse(removeImages)
+    }
+
+    if (removeList.length > 0) {
+      for (const publicId of removeList) {
         await cloudinary.uploader.destroy(publicId)
         product.images = product.images.filter((img) => img.publicId !== publicId)
       }
     }
 
-    if (req.files && req.files.length > 0) {
+    if (req.files?.length > 0) {
       for (const file of req.files) {
         const { publicId, url } = await uploadToCloudinary(file.buffer, 'products')
-        product.images.push({ publicId, url })
+        if (publicId && url) {
+          product.images.push({ publicId, url })
+        }
       }
     }
 
-    product.title = title ?? product.title
-    product.price = price ?? product.price
-    product.category = category ?? product.category
-    product.code = code ?? product.code
-    product.content = content ?? product.content
+    if (price !== undefined) product.price = price
+    if (category !== undefined) product.category = category
+    if (code !== undefined) product.code = code
+    if (content !== undefined) product.content = content
 
     await product.save()
 

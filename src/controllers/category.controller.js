@@ -1,3 +1,4 @@
+import { uploadToCloudinary } from '../configs/cloudinary.js'
 import { Category } from '../models/Category.js'
 import { sendError } from '../utils/sendError.js'
 import { generateUniqueSlug } from '../utils/slug.js'
@@ -20,10 +21,19 @@ export const getAllCategories = async (req, res) => {
 export const createCategory = async (req, res) => {
   try {
     const { name } = req.body
+
     if (!name) return sendError(res, 400, 'Category name is required')
 
     const slug = await generateUniqueSlug(name, Category)
-    const category = new Category({ name, slug })
+
+    const image = req.file
+      ? await (async () => {
+          const { publicId, url } = await uploadToCloudinary(req.file.buffer, 'categories')
+          return { publicId, url }
+        })()
+      : null
+
+    const category = new Category({ name, slug, image })
     await category.save()
 
     res.status(201).json({
@@ -40,11 +50,26 @@ export const createCategory = async (req, res) => {
 export const updateCategory = async (req, res) => {
   try {
     const { name } = req.body
+    const { id } = req.params
+
+    let post = await Category.findById(id)
+    if (!post) return sendError(res, 404, 'Category not found')
     if (!name) return sendError(res, 400, 'Category name is required')
 
-    const slug = await generateUniqueSlug(name, Category, req.params.id)
-    const updated = await Category.findByIdAndUpdate(req.params.id, { name, slug }, { new: true })
-    if (!updated) return sendError(res, 404, 'Category not found')
+    const slug = await generateUniqueSlug(name, Category, id)
+
+    if (req.file) {
+      if (post.image?.publicId) {
+        await cloudinary.uploader.destroy(post.image.publicId)
+      }
+      const { publicId, url } = await uploadToCloudinary(req.file.buffer, 'categories')
+      post.image = { publicId, url }
+    }
+
+    post.name = name
+    post.slug = slug
+
+    const updated = await post.save()
 
     res.json({
       success: true,

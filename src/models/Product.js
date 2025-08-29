@@ -4,7 +4,8 @@ export const Product = model(
   'Product',
   new Schema(
     {
-      title: { type: String, required: true, trim: true },
+      name: { type: String, required: true, trim: true },
+      slug: { type: String, required: true, unique: true },
       price: { type: Number, required: true },
       code: { type: String, required: true, trim: true },
       category: { type: Types.ObjectId, ref: 'Category', required: true },

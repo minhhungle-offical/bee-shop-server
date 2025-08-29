@@ -12,8 +12,8 @@ const productRouter = express.Router()
 
 productRouter.get('/', getAllProducts)
 productRouter.get('/:id', getProductById)
-productRouter.post('/', upload.array('images', 5), createProduct)
-productRouter.put('/:id', upload.array('images', 5), updateProduct)
+productRouter.post('/', upload.array('images', 6), createProduct)
+productRouter.put('/:id', upload.array('images', 6), updateProduct)
 productRouter.delete('/:id', deleteProduct)
 
 export default productRouter
