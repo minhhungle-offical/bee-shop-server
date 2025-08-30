@@ -3,10 +3,9 @@ import cors from 'cors'
 import dotenv from 'dotenv'
 import express from 'express'
 import helmet from 'helmet'
-import { connect } from 'mongoose'
-import { sendError } from './utils/sendError.js'
-import productRouter from './routes/product.route.js'
 import categoryRouter from './routes/category.route.js'
+import productRouter from './routes/product.route.js'
+import { sendError } from './utils/sendError.js'
 
 dotenv.config()
 const app = express()
@@ -52,18 +51,4 @@ app.use((err, req, res, next) => {
   sendError(res, err.status || 500, err.message || 'Internal Server Error')
 })
 
-// ===== Connect DB & Start Server =====
-const PORT = process.env.PORT || 8000
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/db'
-
-connect(MONGO_URI)
-  .then(() => {
-    console.log('✅ MongoDB connected')
-    app.listen(PORT, () => {
-      console.log(`🚀 Server is running at http://localhost:${PORT}`)
-    })
-  })
-  .catch((err) => {
-    console.error('❌ Failed to connect MongoDB', err)
-    process.exit(1)
-  })
+export default app
