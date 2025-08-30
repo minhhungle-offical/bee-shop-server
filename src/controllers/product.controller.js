@@ -18,6 +18,7 @@ export const getAllProducts = async (req, res) => {
       .skip((page - 1) * limit)
       .limit(limit)
       .sort({ createdAt: -1 })
+      .populate('category', 'name')
 
     res.json({
       success: true,
